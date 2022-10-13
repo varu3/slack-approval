@@ -1,0 +1,21 @@
+{
+  "name": "slack-approval",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "build": "tsc"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@actions/core": "^1.10.0",
+    "@actions/github": "^5.1.1",
+    "@slack/bolt": "^3.12.1",
+    "@slack/web-api": "^6.7.2"
+  },
+  "devDependencies": {
+    "@types/node": "^18.8.4",
+    "typescript": "^4.8.4"
+  }
+}
