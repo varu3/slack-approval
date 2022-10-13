@@ -13,7 +13,7 @@ custom action to send approval request to Slack
 
 - First, create a Slack App and install in your workspace.
 - Second, add `chat:write` and `im:write` to OAuth Scope on OAuth & Permissions page.
-- Finally, **Enable Socket**.
+- Finally, **Enable Socket Mode**.
 
 ```
 jobs:
