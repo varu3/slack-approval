@@ -2,6 +2,12 @@
 
 custom action to send approval request to Slack
 
+![slack-approval](./img/approval)
+
+- Post a message in Slack with a button like the one above.
+- Clicking on "Approve" will execute the subsequent workflow.
+- Clicking on "Reject" will cause the workflow to fail.
+
 # How To Use
 
 - First, create a Slack App and install in your workspace.
