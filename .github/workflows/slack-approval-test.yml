@@ -2,6 +2,13 @@ name: Test slack-approval
 
 on:
   push:
+    branches:
+      - main
+  pull_request:
+    types:
+      - opened
+      - synchronize
+      - reopened
 
 jobs:
   approval:
