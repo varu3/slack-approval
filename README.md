@@ -2,7 +2,8 @@
 
 custom action to send approval request to Slack
 
-![slack-approval](./img/approval)
+![](https://user-images.githubusercontent.com/35091584/195488201-acc24277-5e0c-431f-a4b3-21b4430d5d80.png)
+
 
 - Post a message in Slack with a button like the one above.
 - Clicking on "Approve" will execute the subsequent workflow.
