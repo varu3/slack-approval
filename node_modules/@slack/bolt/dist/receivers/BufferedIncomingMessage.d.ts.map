@@ -1,0 +1,1 @@
+{"version":3,"file":"BufferedIncomingMessage.d.ts","sourceRoot":"","sources":["../../src/receivers/BufferedIncomingMessage.ts"],"names":[],"mappings":";;AAAA,OAAO,EAAE,eAAe,EAAE,MAAM,MAAM,CAAC;AAEvC,MAAM,WAAW,uBAAwB,SAAQ,eAAe;IAC9D,OAAO,EAAE,MAAM,CAAC;CACjB"}
