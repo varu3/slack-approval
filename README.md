@@ -26,7 +26,7 @@ jobs:
           SLACK_APP_TOKEN: ${{ secrets.SLACK_APP_TOKEN }}
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
           SLACK_SIGNING_SECRET: ${{ secrets.SLACK_SIGNING_SECRET }}
-          CHANNEL_ID: ${{ secrets.CHANNEL_ID }}
+          SLACK_CHANNEL_ID: ${{ secrets.SLACK_CHANNEL_ID }}
         timeout-minutes: 10
 ```
 
@@ -44,7 +44,7 @@ jobs:
 
     - Signing Secret on `Basic Information page`.
 
-  - `CHANNEL_ID`
+  - `SLACK_CHANNEL_ID`
 
     - Channel ID for which you want to send approval.
 
