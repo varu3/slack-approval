@@ -1,13 +1,13 @@
-# skack-approval
+# slack-approval
 
 custom action to send approval request to Slack
 
 ![](https://user-images.githubusercontent.com/35091584/195488201-acc24277-5e0c-431f-a4b3-21b4430d5d80.png)
 
 
-- Post a message in Slack with a button like the one above.
-- Clicking on "Approve" will execute the subsequent workflow.
-- Clicking on "Reject" will cause the workflow to fail.
+- Post a message in Slack with a "Aoorove" and "Reject" buttons. 
+- Clicking on "Approve" will execute next steps.
+- Clicking on "Reject" will cause workflow to fail.
 
 # How To Use
 
@@ -21,7 +21,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: send approval
-        uses: varu3/slack-approval@master
+        uses: varu3/slack-approval@main
         env:
           SLACK_APP_TOKEN: ${{ secrets.SLACK_APP_TOKEN }}
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
@@ -34,15 +34,15 @@ jobs:
 
   - `SLACK_APP_TOKEN`
 
-    - App-level tokens on Basic Information page. (starting with xapp-)
+    - App-level tokens on `Basic Information page`. (starting with `xapp-` )
 
   - `SLACK_BOT_TOKEN`
 
-    - Bot-level tokens on OAuth & Permissions page. (starting with xoxb-)
+    - Bot-level tokens on `OAuth & Permissions page`. (starting with `xoxb-` )
 
   - `SLACK_SIGNING_SECRET`
 
-    - Signing Secret on Basic Information page.
+    - Signing Secret on `Basic Information page`.
 
   - `SLACK_CHANNEL_ID`
 
