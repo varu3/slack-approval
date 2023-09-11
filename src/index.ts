@@ -81,7 +81,7 @@ async function run(): Promise<void> {
                         },
                         "style": "primary",
                         "value": "approve",
-                        "action_id": "slack-approval-approve"
+                        "action_id": 'slack-approval-approve-${run_id}'
                     },
                     {
                         "type": "button",
@@ -92,7 +92,7 @@ async function run(): Promise<void> {
                         },
                         "style": "danger",
                         "value": "reject",
-                        "action_id": "slack-approval-reject"
+                        "action_id": 'slack-approval-reject-${run_id}'
                     }
                 ]
             }
@@ -100,7 +100,7 @@ async function run(): Promise<void> {
       });
     })();
 
-    app.action('slack-approval-approve', async ({ack, client, body, logger}) => {
+    app.action('slack-approval-approve-${run_id}', async ({ack, client, body, logger}) => {
       await ack();
       try {
         const response_blocks = (<BlockAction>body).message?.blocks
@@ -125,7 +125,7 @@ async function run(): Promise<void> {
       process.exit(0)
     });
 
-    app.action('slack-approval-reject', async ({ack, client, body, logger}) => {
+    app.action('slack-approval-reject-${run_id}', async ({ack, client, body, logger}) => {
       await ack();
       try {
         const response_blocks = (<BlockAction>body).message?.blocks
