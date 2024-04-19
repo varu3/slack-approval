@@ -4,10 +4,10 @@ var utils = require('./../utils');
 var transformData = require('./transformData');
 var isCancel = require('../cancel/isCancel');
 var defaults = require('../defaults');
-var CanceledError = require('../cancel/CanceledError');
+var Cancel = require('../cancel/Cancel');
 
 /**
- * Throws a `CanceledError` if cancellation has been requested.
+ * Throws a `Cancel` if cancellation has been requested.
  */
 function throwIfCancellationRequested(config) {
   if (config.cancelToken) {
@@ -15,7 +15,7 @@ function throwIfCancellationRequested(config) {
   }
 
   if (config.signal && config.signal.aborted) {
-    throw new CanceledError();
+    throw new Cancel('canceled');
   }
 }
 

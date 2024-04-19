@@ -1,7 +1,6 @@
 'use strict';
 
 var VERSION = require('../env/data').version;
-var AxiosError = require('../core/AxiosError');
 
 var validators = {};
 
@@ -29,10 +28,7 @@ validators.transitional = function transitional(validator, version, message) {
   // eslint-disable-next-line func-names
   return function(value, opt, opts) {
     if (validator === false) {
-      throw new AxiosError(
-        formatMessage(opt, ' has been removed' + (version ? ' in ' + version : '')),
-        AxiosError.ERR_DEPRECATED
-      );
+      throw new Error(formatMessage(opt, ' has been removed' + (version ? ' in ' + version : '')));
     }
 
     if (version && !deprecatedWarnings[opt]) {
@@ -59,7 +55,7 @@ validators.transitional = function transitional(validator, version, message) {
 
 function assertOptions(options, schema, allowUnknown) {
   if (typeof options !== 'object') {
-    throw new AxiosError('options must be an object', AxiosError.ERR_BAD_OPTION_VALUE);
+    throw new TypeError('options must be an object');
   }
   var keys = Object.keys(options);
   var i = keys.length;
@@ -70,12 +66,12 @@ function assertOptions(options, schema, allowUnknown) {
       var value = options[opt];
       var result = value === undefined || validator(value, opt, options);
       if (result !== true) {
-        throw new AxiosError('option ' + opt + ' must be ' + result, AxiosError.ERR_BAD_OPTION_VALUE);
+        throw new TypeError('option ' + opt + ' must be ' + result);
       }
       continue;
     }
     if (allowUnknown !== true) {
-      throw new AxiosError('Unknown option ' + opt, AxiosError.ERR_BAD_OPTION);
+      throw Error('Unknown option ' + opt);
     }
   }
 }

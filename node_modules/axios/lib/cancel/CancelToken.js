@@ -1,6 +1,6 @@
 'use strict';
 
-var CanceledError = require('./CanceledError');
+var Cancel = require('./Cancel');
 
 /**
  * A `CancelToken` is an object that can be used to request cancellation of an operation.
@@ -56,13 +56,13 @@ function CancelToken(executor) {
       return;
     }
 
-    token.reason = new CanceledError(message);
+    token.reason = new Cancel(message);
     resolvePromise(token.reason);
   });
 }
 
 /**
- * Throws a `CanceledError` if cancellation has been requested.
+ * Throws a `Cancel` if cancellation has been requested.
  */
 CancelToken.prototype.throwIfRequested = function throwIfRequested() {
   if (this.reason) {

@@ -37,17 +37,10 @@ var axios = createInstance(defaults);
 axios.Axios = Axios;
 
 // Expose Cancel & CancelToken
-axios.CanceledError = require('./cancel/CanceledError');
+axios.Cancel = require('./cancel/Cancel');
 axios.CancelToken = require('./cancel/CancelToken');
 axios.isCancel = require('./cancel/isCancel');
 axios.VERSION = require('./env/data').version;
-axios.toFormData = require('./helpers/toFormData');
-
-// Expose AxiosError class
-axios.AxiosError = require('../lib/core/AxiosError');
-
-// alias for CanceledError for backward compatibility
-axios.Cancel = axios.CanceledError;
 
 // Expose all/spread
 axios.all = function all(promises) {

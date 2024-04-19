@@ -2,9 +2,8 @@
 
 var utils = require('../utils');
 var normalizeHeaderName = require('../helpers/normalizeHeaderName');
-var AxiosError = require('../core/AxiosError');
+var enhanceError = require('../core/enhanceError');
 var transitionalDefaults = require('./transitional');
-var toFormData = require('../helpers/toFormData');
 
 var DEFAULT_CONTENT_TYPE = {
   'Content-Type': 'application/x-www-form-urlencoded'
@@ -69,20 +68,10 @@ var defaults = {
       setContentTypeIfUnset(headers, 'application/x-www-form-urlencoded;charset=utf-8');
       return data.toString();
     }
-
-    var isObjectPayload = utils.isObject(data);
-    var contentType = headers && headers['Content-Type'];
-
-    var isFileList;
-
-    if ((isFileList = utils.isFileList(data)) || (isObjectPayload && contentType === 'multipart/form-data')) {
-      var _FormData = this.env && this.env.FormData;
-      return toFormData(isFileList ? {'files[]': data} : data, _FormData && new _FormData());
-    } else if (isObjectPayload || contentType === 'application/json') {
+    if (utils.isObject(data) || (headers && headers['Content-Type'] === 'application/json')) {
       setContentTypeIfUnset(headers, 'application/json');
       return stringifySafely(data);
     }
-
     return data;
   }],
 
@@ -98,7 +87,7 @@ var defaults = {
       } catch (e) {
         if (strictJSONParsing) {
           if (e.name === 'SyntaxError') {
-            throw AxiosError.from(e, AxiosError.ERR_BAD_RESPONSE, this, null, this.response);
+            throw enhanceError(e, this, 'E_JSON_PARSE');
           }
           throw e;
         }
@@ -119,10 +108,6 @@ var defaults = {
 
   maxContentLength: -1,
   maxBodyLength: -1,
-
-  env: {
-    FormData: require('./env/FormData')
-  },
 
   validateStatus: function validateStatus(status) {
     return status >= 200 && status < 300;
