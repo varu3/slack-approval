@@ -7,7 +7,7 @@ const token = process.env.SLACK_BOT_TOKEN || ""
 const signingSecret =  process.env.SLACK_SIGNING_SECRET || ""
 const slackAppToken = process.env.SLACK_APP_TOKEN || ""
 const channel_id    = process.env.SLACK_CHANNEL_ID || ""
-const customBlocks  = process.env.INPUT_CUSTOM_BLOCKS || "[]"
+const customBlocks  = core.getInput('custom-blocks') || "[]"
 
 const app = new App({
   token: token,
