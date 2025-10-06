@@ -15,7 +15,7 @@ custom action to send approval request to Slack
 - Second, add `chat:write` and `im:write` to OAuth Scope on OAuth & Permissions page.
 - Finally, **Enable Socket Mode**.
 
-```
+```yaml
 jobs:
   approval:
     runs-on: ubuntu-latest
@@ -49,4 +49,36 @@ jobs:
     - Channel ID for which you want to send approval.
 
 - Set `timeout-minutes`
-  - Set the time to wait for approval.
+  - Set the time to wait for approval. If the timeout is reached, GitHub Actions will forcefully terminate the workflow.
+
+## Custom Blocks
+
+You can add custom blocks to the Slack notification by using the `custom-blocks` input:
+
+```yaml
+jobs:
+  approval:
+    runs-on: ubuntu-latest
+    steps:
+      - name: send approval
+        uses: varu3/slack-approval@main
+        with:
+          custom-blocks: |
+            [
+              {
+                "type": "section",
+                "text": {
+                  "type": "mrkdwn",
+                  "text": "*Environment:* Production"
+                }
+              }
+            ]
+        env:
+          SLACK_APP_TOKEN: ${{ secrets.SLACK_APP_TOKEN }}
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+          SLACK_SIGNING_SECRET: ${{ secrets.SLACK_SIGNING_SECRET }}
+          SLACK_CHANNEL_ID: ${{ secrets.SLACK_CHANNEL_ID }}
+        timeout-minutes: 10
+```
+
+The custom blocks will be displayed after the workflow information and before the Approve/Reject buttons. You can use any valid [Slack Block Kit](https://api.slack.com/block-kit) blocks.

@@ -1,6 +1,11 @@
 name: slack-approval
 description: Custom action to send approval request to Slack from GitHub Actions
 author: varu3
+inputs:
+  custom-blocks:
+    description: 'Custom blocks to display in Slack notification (JSON string)'
+    required: false
+    default: '[]'
 runs:
   using: "node24"
   main: "dist/index.js"
