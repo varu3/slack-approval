@@ -1,11 +1,13 @@
 import * as core from '@actions/core'
 import { App, BlockAction, LogLevel } from '@slack/bolt'
 import { WebClient } from '@slack/web-api'
+import { KnownBlock, Block } from '@slack/types'
 
 const token = process.env.SLACK_BOT_TOKEN || ""
 const signingSecret =  process.env.SLACK_SIGNING_SECRET || ""
 const slackAppToken = process.env.SLACK_APP_TOKEN || ""
 const channel_id    = process.env.SLACK_CHANNEL_ID || ""
+const customBlocks  = process.env.INPUT_CUSTOM_BLOCKS || "[]"
 
 const app = new App({
   token: token,
@@ -28,11 +30,16 @@ async function run(): Promise<void> {
     const runnerOS   = process.env.RUNNER_OS || "";
     const actor      = process.env.GITHUB_ACTOR || "";
 
+    // Parse custom blocks
+    let parsedCustomBlocks: (KnownBlock | Block)[] = [];
+    try {
+      parsedCustomBlocks = JSON.parse(customBlocks);
+    } catch (error) {
+      console.warn('Failed to parse custom-blocks, using empty array:', error);
+    }
+
     (async () => {
-      await web.chat.postMessage({ 
-        channel: channel_id, 
-        text: "GitHub Actions Approval request",
-        blocks: [
+      const baseBlocks: (KnownBlock | Block)[] = [
             {
               "type": "section",
               "text": {
@@ -70,33 +77,48 @@ async function run(): Promise<void> {
               ]
             },
             {
-                "type": "actions",
-                "elements": [
-                    {
-                        "type": "button",
-                        "text": {
-                            "type": "plain_text",
-                            "emoji": true,
-                            "text": "Approve"
-                        },
-                        "style": "primary",
-                        "value": "approve",
-                        "action_id": "slack-approval-approve"
-                    },
-                    {
-                        "type": "button",
-                        "text": {
-                                "type": "plain_text",
-                                "emoji": true,
-                                "text": "Reject"
-                        },
-                        "style": "danger",
-                        "value": "reject",
-                        "action_id": "slack-approval-reject"
-                    }
-                ]
-            }
-        ]
+              "type": "divider"
+            },
+        ];
+
+      const actionBlock: KnownBlock | Block = {
+          "type": "actions",
+          "elements": [
+              {
+                  "type": "button",
+                  "text": {
+                      "type": "plain_text",
+                      "emoji": true,
+                      "text": "Approve"
+                  },
+                  "style": "primary",
+                  "value": "approve",
+                  "action_id": "slack-approval-approve"
+              },
+              {
+                  "type": "button",
+                  "text": {
+                          "type": "plain_text",
+                          "emoji": true,
+                          "text": "Reject"
+                  },
+                  "style": "danger",
+                  "value": "reject",
+                  "action_id": "slack-approval-reject"
+              }
+          ]
+      };
+
+      const messageBlocks: (KnownBlock | Block)[] = [
+        ...baseBlocks,
+        ...parsedCustomBlocks,
+        actionBlock
+      ];
+
+      await web.chat.postMessage({
+        channel: channel_id,
+        text: "GitHub Actions Approval request",
+        blocks: messageBlocks
       });
     })();
 

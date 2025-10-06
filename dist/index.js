@@ -40,6 +40,7 @@ const token = process.env.SLACK_BOT_TOKEN || "";
 const signingSecret = process.env.SLACK_SIGNING_SECRET || "";
 const slackAppToken = process.env.SLACK_APP_TOKEN || "";
 const channel_id = process.env.SLACK_CHANNEL_ID || "";
+const customBlocks = process.env.INPUT_CUSTOM_BLOCKS || "[]";
 const app = new bolt_1.App({
     token: token,
     signingSecret: signingSecret,
@@ -58,75 +59,92 @@ async function run() {
         const workflow = process.env.GITHUB_WORKFLOW || "";
         const runnerOS = process.env.RUNNER_OS || "";
         const actor = process.env.GITHUB_ACTOR || "";
+        // Parse custom blocks
+        let parsedCustomBlocks = [];
+        try {
+            parsedCustomBlocks = JSON.parse(customBlocks);
+        }
+        catch (error) {
+            console.warn('Failed to parse custom-blocks, using empty array:', error);
+        }
         (async () => {
+            const baseBlocks = [
+                {
+                    "type": "section",
+                    "text": {
+                        "type": "mrkdwn",
+                        "text": `GitHub Actions Approval Request`,
+                    }
+                },
+                {
+                    "type": "section",
+                    "fields": [
+                        {
+                            "type": "mrkdwn",
+                            "text": `*GitHub Actor:*\n${actor}`
+                        },
+                        {
+                            "type": "mrkdwn",
+                            "text": `*Repos:*\n${github_server_url}/${github_repos}`
+                        },
+                        {
+                            "type": "mrkdwn",
+                            "text": `*Actions URL:*\n${actionsUrl}`
+                        },
+                        {
+                            "type": "mrkdwn",
+                            "text": `*GITHUB_RUN_ID:*\n${run_id}`
+                        },
+                        {
+                            "type": "mrkdwn",
+                            "text": `*Workflow:*\n${workflow}`
+                        },
+                        {
+                            "type": "mrkdwn",
+                            "text": `*RunnerOS:*\n${runnerOS}`
+                        }
+                    ]
+                },
+                {
+                    "type": "divider"
+                },
+            ];
+            const actionBlock = {
+                "type": "actions",
+                "elements": [
+                    {
+                        "type": "button",
+                        "text": {
+                            "type": "plain_text",
+                            "emoji": true,
+                            "text": "Approve"
+                        },
+                        "style": "primary",
+                        "value": "approve",
+                        "action_id": "slack-approval-approve"
+                    },
+                    {
+                        "type": "button",
+                        "text": {
+                            "type": "plain_text",
+                            "emoji": true,
+                            "text": "Reject"
+                        },
+                        "style": "danger",
+                        "value": "reject",
+                        "action_id": "slack-approval-reject"
+                    }
+                ]
+            };
+            const messageBlocks = [
+                ...baseBlocks,
+                ...parsedCustomBlocks,
+                actionBlock
+            ];
             await web.chat.postMessage({
                 channel: channel_id,
                 text: "GitHub Actions Approval request",
-                blocks: [
-                    {
-                        "type": "section",
-                        "text": {
-                            "type": "mrkdwn",
-                            "text": `GitHub Actions Approval Request`,
-                        }
-                    },
-                    {
-                        "type": "section",
-                        "fields": [
-                            {
-                                "type": "mrkdwn",
-                                "text": `*GitHub Actor:*\n${actor}`
-                            },
-                            {
-                                "type": "mrkdwn",
-                                "text": `*Repos:*\n${github_server_url}/${github_repos}`
-                            },
-                            {
-                                "type": "mrkdwn",
-                                "text": `*Actions URL:*\n${actionsUrl}`
-                            },
-                            {
-                                "type": "mrkdwn",
-                                "text": `*GITHUB_RUN_ID:*\n${run_id}`
-                            },
-                            {
-                                "type": "mrkdwn",
-                                "text": `*Workflow:*\n${workflow}`
-                            },
-                            {
-                                "type": "mrkdwn",
-                                "text": `*RunnerOS:*\n${runnerOS}`
-                            }
-                        ]
-                    },
-                    {
-                        "type": "actions",
-                        "elements": [
-                            {
-                                "type": "button",
-                                "text": {
-                                    "type": "plain_text",
-                                    "emoji": true,
-                                    "text": "Approve"
-                                },
-                                "style": "primary",
-                                "value": "approve",
-                                "action_id": "slack-approval-approve"
-                            },
-                            {
-                                "type": "button",
-                                "text": {
-                                    "type": "plain_text",
-                                    "emoji": true,
-                                    "text": "Reject"
-                                },
-                                "style": "danger",
-                                "value": "reject",
-                                "action_id": "slack-approval-reject"
-                            }
-                        ]
-                    }
-                ]
+                blocks: messageBlocks
             });
         })();
         app.action('slack-approval-approve', async ({ ack, client, body, logger }) => {
