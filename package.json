@@ -9,13 +9,16 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@actions/core": "^1.10.0",
-    "@actions/github": "^5.1.1",
-    "@slack/bolt": "^3.12.1",
-    "@slack/web-api": "^6.7.2"
+    "@actions/core": "^1.11.1",
+    "@actions/github": "^6.0.1",
+    "@slack/bolt": "^4.4.0",
+    "@slack/web-api": "^7.10.0"
   },
   "devDependencies": {
-    "@types/node": "^18.8.4",
-    "typescript": "^4.8.4"
+    "@types/node": "^22.10.5",
+    "typescript": "^5.7.3"
+  },
+  "engines": {
+    "node": ">=24.0.0"
   }
 }
