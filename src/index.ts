@@ -10,13 +10,23 @@ const channel_id    = process.env.SLACK_CHANNEL_ID || ""
 const customBlocks  = core.getInput('custom-blocks') || "[]"
 const overrideBaseBlocks = core.getInput('override-base-blocks') === 'true'
 
+// Configure log level from environment variable, default to WARN
+const logLevelString = process.env.SLACK_LOG_LEVEL || "WARN"
+const logLevelMap: { [key: string]: LogLevel } = {
+  "DEBUG": LogLevel.DEBUG,
+  "INFO": LogLevel.INFO,
+  "WARN": LogLevel.WARN,
+  "ERROR": LogLevel.ERROR
+}
+const logLevel = logLevelMap[logLevelString.toUpperCase()] || LogLevel.WARN
+
 const app = new App({
   token: token,
   signingSecret: signingSecret,
   appToken: slackAppToken,
   socketMode: true,
   port: 3000,
-  logLevel: LogLevel.DEBUG,
+  logLevel: logLevel,
 });
 
 async function run(): Promise<void> {
