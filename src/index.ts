@@ -8,6 +8,7 @@ const signingSecret =  process.env.SLACK_SIGNING_SECRET || ""
 const slackAppToken = process.env.SLACK_APP_TOKEN || ""
 const channel_id    = process.env.SLACK_CHANNEL_ID || ""
 const customBlocks  = core.getInput('custom-blocks') || "[]"
+const overrideBaseBlocks = core.getInput('override-base-blocks') === 'true'
 
 const app = new App({
   token: token,
@@ -109,11 +110,9 @@ async function run(): Promise<void> {
           ]
       };
 
-      const messageBlocks: (KnownBlock | Block)[] = [
-        ...baseBlocks,
-        ...parsedCustomBlocks,
-        actionBlock
-      ];
+      const messageBlocks: (KnownBlock | Block)[] = overrideBaseBlocks
+        ? [...parsedCustomBlocks, actionBlock]
+        : [...baseBlocks, ...parsedCustomBlocks, actionBlock];
 
       await web.chat.postMessage({
         channel: channel_id,

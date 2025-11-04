@@ -82,3 +82,49 @@ jobs:
 ```
 
 The custom blocks will be displayed after the workflow information and before the Approve/Reject buttons. You can use any valid [Slack Block Kit](https://api.slack.com/block-kit) blocks.
+
+## Override Base Blocks
+
+If you want to completely replace the default workflow information with your own custom blocks (while keeping the Approve/Reject buttons), use the `override-base-blocks` input:
+
+```yaml
+jobs:
+  approval:
+    runs-on: ubuntu-latest
+    steps:
+      - name: send approval
+        uses: varu3/slack-approval@main
+        with:
+          override-base-blocks: true
+          custom-blocks: |
+            [
+              {
+                "type": "section",
+                "text": {
+                  "type": "mrkdwn",
+                  "text": "*Custom Approval Request*"
+                }
+              },
+              {
+                "type": "section",
+                "fields": [
+                  {
+                    "type": "mrkdwn",
+                    "text": "*Environment:*\nProduction"
+                  },
+                  {
+                    "type": "mrkdwn",
+                    "text": "*Requested by:*\n${{ github.actor }}"
+                  }
+                ]
+              }
+            ]
+        env:
+          SLACK_APP_TOKEN: ${{ secrets.SLACK_APP_TOKEN }}
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+          SLACK_SIGNING_SECRET: ${{ secrets.SLACK_SIGNING_SECRET }}
+          SLACK_CHANNEL_ID: ${{ secrets.SLACK_CHANNEL_ID }}
+        timeout-minutes: 10
+```
+
+When `override-base-blocks` is set to `true`, only your custom blocks and the Approve/Reject buttons will be displayed. The default workflow information (GitHub Actor, Repository, Actions URL, etc.) will be omitted.

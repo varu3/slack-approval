@@ -41,6 +41,7 @@ const signingSecret = process.env.SLACK_SIGNING_SECRET || "";
 const slackAppToken = process.env.SLACK_APP_TOKEN || "";
 const channel_id = process.env.SLACK_CHANNEL_ID || "";
 const customBlocks = core.getInput('custom-blocks') || "[]";
+const overrideBaseBlocks = core.getInput('override-base-blocks') === 'true';
 const app = new bolt_1.App({
     token: token,
     signingSecret: signingSecret,
@@ -136,11 +137,9 @@ async function run() {
                     }
                 ]
             };
-            const messageBlocks = [
-                ...baseBlocks,
-                ...parsedCustomBlocks,
-                actionBlock
-            ];
+            const messageBlocks = overrideBaseBlocks
+                ? [...parsedCustomBlocks, actionBlock]
+                : [...baseBlocks, ...parsedCustomBlocks, actionBlock];
             await web.chat.postMessage({
                 channel: channel_id,
                 text: "GitHub Actions Approval request",

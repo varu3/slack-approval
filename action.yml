@@ -6,6 +6,10 @@ inputs:
     description: 'Custom blocks to display in Slack notification (JSON string)'
     required: false
     default: '[]'
+  override-base-blocks:
+    description: 'If true, replaces default workflow information with custom-blocks (keeps Approve/Reject buttons)'
+    required: false
+    default: 'false'
 runs:
   using: "node24"
   main: "dist/index.js"
