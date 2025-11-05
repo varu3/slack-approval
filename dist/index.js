@@ -42,13 +42,27 @@ const slackAppToken = process.env.SLACK_APP_TOKEN || "";
 const channel_id = process.env.SLACK_CHANNEL_ID || "";
 const customBlocks = core.getInput('custom-blocks') || "[]";
 const overrideBaseBlocks = core.getInput('override-base-blocks') === 'true';
+// Configure log level with priority: RUNNER_DEBUG > SLACK_LOG_LEVEL > WARN (default)
+const logLevelMap = {
+    "DEBUG": bolt_1.LogLevel.DEBUG,
+    "INFO": bolt_1.LogLevel.INFO,
+    "WARN": bolt_1.LogLevel.WARN,
+    "ERROR": bolt_1.LogLevel.ERROR
+};
+let logLevel = bolt_1.LogLevel.WARN; // default
+if (process.env.RUNNER_DEBUG === '1') {
+    logLevel = bolt_1.LogLevel.DEBUG;
+}
+else if (process.env.SLACK_LOG_LEVEL) {
+    logLevel = logLevelMap[process.env.SLACK_LOG_LEVEL.toUpperCase()] || bolt_1.LogLevel.WARN;
+}
 const app = new bolt_1.App({
     token: token,
     signingSecret: signingSecret,
     appToken: slackAppToken,
     socketMode: true,
     port: 3000,
-    logLevel: bolt_1.LogLevel.DEBUG,
+    logLevel: logLevel,
 });
 async function run() {
     try {
@@ -60,6 +74,8 @@ async function run() {
         const workflow = process.env.GITHUB_WORKFLOW || "";
         const runnerOS = process.env.RUNNER_OS || "";
         const actor = process.env.GITHUB_ACTOR || "";
+        // Store message timestamp for timeout handling
+        let messageTs = "";
         // Parse custom blocks
         let parsedCustomBlocks = [];
         try {
@@ -68,6 +84,49 @@ async function run() {
         catch (error) {
             console.warn('Failed to parse custom-blocks, using empty array:', error);
         }
+        // Handle timeout (SIGTERM is sent by GitHub Actions before timeout kill)
+        const handleTimeout = async () => {
+            if (messageTs) {
+                try {
+                    console.log('Timeout detected, updating Slack message...');
+                    // Get current message blocks
+                    const response = await web.conversations.history({
+                        channel: channel_id,
+                        latest: messageTs,
+                        limit: 1,
+                        inclusive: true
+                    });
+                    const message = response.messages?.[0];
+                    if (message?.blocks) {
+                        const updatedBlocks = message.blocks;
+                        // Remove the action buttons (last block)
+                        updatedBlocks.pop();
+                        // Add timeout message
+                        const timeoutBlock = {
+                            'type': 'section',
+                            'text': {
+                                'type': 'mrkdwn',
+                                'text': '⏱️ *Timeout:* The approval time has expired and the deployment was cancelled',
+                            },
+                        };
+                        updatedBlocks.push(timeoutBlock);
+                        await web.chat.update({
+                            channel: channel_id,
+                            ts: messageTs,
+                            blocks: updatedBlocks,
+                            text: "GitHub Actions Approval request - Timeout"
+                        });
+                        console.log('Slack message updated with timeout notification');
+                    }
+                }
+                catch (error) {
+                    console.error('Failed to update Slack message on timeout:', error);
+                }
+            }
+            process.exit(1);
+        };
+        process.on('SIGTERM', handleTimeout);
+        process.on('SIGINT', handleTimeout);
         (async () => {
             const baseBlocks = [
                 {
@@ -140,11 +199,13 @@ async function run() {
             const messageBlocks = overrideBaseBlocks
                 ? [...parsedCustomBlocks, actionBlock]
                 : [...baseBlocks, ...parsedCustomBlocks, actionBlock];
-            await web.chat.postMessage({
+            const result = await web.chat.postMessage({
                 channel: channel_id,
                 text: "GitHub Actions Approval request",
                 blocks: messageBlocks
             });
+            // Store message timestamp for timeout handling
+            messageTs = result.ts || "";
         })();
         app.action('slack-approval-approve', async ({ ack, client, body, logger }) => {
             await ack();

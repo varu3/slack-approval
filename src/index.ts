@@ -10,15 +10,20 @@ const channel_id    = process.env.SLACK_CHANNEL_ID || ""
 const customBlocks  = core.getInput('custom-blocks') || "[]"
 const overrideBaseBlocks = core.getInput('override-base-blocks') === 'true'
 
-// Configure log level from environment variable, default to WARN
-const logLevelString = process.env.SLACK_LOG_LEVEL || "WARN"
+// Configure log level with priority: RUNNER_DEBUG > SLACK_LOG_LEVEL > WARN (default)
 const logLevelMap: { [key: string]: LogLevel } = {
   "DEBUG": LogLevel.DEBUG,
   "INFO": LogLevel.INFO,
   "WARN": LogLevel.WARN,
   "ERROR": LogLevel.ERROR
 }
-const logLevel = logLevelMap[logLevelString.toUpperCase()] || LogLevel.WARN
+
+let logLevel = LogLevel.WARN; // default
+if (process.env.RUNNER_DEBUG === '1') {
+  logLevel = LogLevel.DEBUG;
+} else if (process.env.SLACK_LOG_LEVEL) {
+  logLevel = logLevelMap[process.env.SLACK_LOG_LEVEL.toUpperCase()] || LogLevel.WARN;
+}
 
 const app = new App({
   token: token,
@@ -41,6 +46,9 @@ async function run(): Promise<void> {
     const runnerOS   = process.env.RUNNER_OS || "";
     const actor      = process.env.GITHUB_ACTOR || "";
 
+    // Store message timestamp for timeout handling
+    let messageTs = "";
+
     // Parse custom blocks
     let parsedCustomBlocks: (KnownBlock | Block)[] = [];
     try {
@@ -48,6 +56,54 @@ async function run(): Promise<void> {
     } catch (error) {
       console.warn('Failed to parse custom-blocks, using empty array:', error);
     }
+
+    // Handle timeout (SIGTERM is sent by GitHub Actions before timeout kill)
+    const handleTimeout = async () => {
+      if (messageTs) {
+        try {
+          console.log('Timeout detected, updating Slack message...');
+
+          // Get current message blocks
+          const response = await web.conversations.history({
+            channel: channel_id,
+            latest: messageTs,
+            limit: 1,
+            inclusive: true
+          });
+
+          const message = response.messages?.[0];
+          if (message?.blocks) {
+            const updatedBlocks = message.blocks as (KnownBlock | Block)[];
+            // Remove the action buttons (last block)
+            updatedBlocks.pop();
+
+            // Add timeout message
+            const timeoutBlock: KnownBlock | Block = {
+              'type': 'section',
+              'text': {
+                'type': 'mrkdwn',
+                'text': '⏱️ *Timeout:* The approval time has expired and the deployment was cancelled',
+              },
+            };
+            updatedBlocks.push(timeoutBlock);
+
+            await web.chat.update({
+              channel: channel_id,
+              ts: messageTs,
+              blocks: updatedBlocks,
+              text: "GitHub Actions Approval request - Timeout"
+            });
+            console.log('Slack message updated with timeout notification');
+          }
+        } catch (error) {
+          console.error('Failed to update Slack message on timeout:', error);
+        }
+      }
+      process.exit(1);
+    };
+
+    process.on('SIGTERM', handleTimeout);
+    process.on('SIGINT', handleTimeout);
 
     (async () => {
       const baseBlocks: (KnownBlock | Block)[] = [
@@ -124,11 +180,14 @@ async function run(): Promise<void> {
         ? [...parsedCustomBlocks, actionBlock]
         : [...baseBlocks, ...parsedCustomBlocks, actionBlock];
 
-      await web.chat.postMessage({
+      const result = await web.chat.postMessage({
         channel: channel_id,
         text: "GitHub Actions Approval request",
         blocks: messageBlocks
       });
+
+      // Store message timestamp for timeout handling
+      messageTs = result.ts || "";
     })();
 
     app.action('slack-approval-approve', async ({ack, client, body, logger}) => {
