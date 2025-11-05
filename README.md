@@ -128,3 +128,81 @@ jobs:
 ```
 
 When `override-base-blocks` is set to `true`, only your custom blocks and the Approve/Reject buttons will be displayed. The default workflow information (GitHub Actor, Repository, Actions URL, etc.) will be omitted.
+
+## Timeout Handling
+
+When the `timeout-minutes` limit is reached, the action automatically:
+- Detects the timeout signal from GitHub Actions
+- Disables the Approve/Reject buttons in the Slack message
+- Updates the message with a timeout notification
+- Exits with failure status
+
+The Slack message will be updated to show:
+> ⏱️ **Timeout:** The approval time has expired and the deployment was cancelled
+
+**Example:**
+```yaml
+jobs:
+  approval:
+    runs-on: ubuntu-latest
+    steps:
+      - name: send approval
+        uses: varu3/slack-approval@main
+        env:
+          SLACK_APP_TOKEN: ${{ secrets.SLACK_APP_TOKEN }}
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+          SLACK_SIGNING_SECRET: ${{ secrets.SLACK_SIGNING_SECRET }}
+          SLACK_CHANNEL_ID: ${{ secrets.SLACK_CHANNEL_ID }}
+        timeout-minutes: 10  # Timeout after 10 minutes
+```
+
+**Note:** No additional Slack OAuth scopes are required for timeout handling. The action stores message blocks locally and does not need to fetch the message from Slack API.
+
+## Configurable Log Level
+
+Control the verbosity of Slack Bolt framework logs using environment variables:
+
+**Priority (highest to lowest):**
+1. `RUNNER_DEBUG=1` - GitHub Actions debug mode (uses DEBUG level)
+2. `SLACK_LOG_LEVEL` - Explicit log level (DEBUG, INFO, WARN, ERROR)
+3. Default: `WARN`
+
+**Example with explicit log level:**
+```yaml
+- name: send approval
+  uses: varu3/slack-approval@main
+  env:
+    SLACK_LOG_LEVEL: DEBUG
+    SLACK_APP_TOKEN: ${{ secrets.SLACK_APP_TOKEN }}
+    SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+    SLACK_SIGNING_SECRET: ${{ secrets.SLACK_SIGNING_SECRET }}
+    SLACK_CHANNEL_ID: ${{ secrets.SLACK_CHANNEL_ID }}
+```
+
+**Example with GitHub Actions debug mode:**
+
+Enable debug mode by setting the `ACTIONS_STEP_DEBUG` secret to `true` in your repository settings, or by re-running the workflow with debug logging enabled. The action will automatically use DEBUG log level.
+
+## Output Messages
+
+The action provides clear output messages for each outcome:
+
+### ✅ Approved
+```
+✅ APPROVED by username (U12345678) at 2025-11-05T12:34:56.789Z
+```
+
+### ❌ Rejected
+```
+❌ REJECTED by username (U12345678) at 2025-11-05T12:34:56.789Z
+```
+
+### ⏱️ Timeout
+```
+⏱️ TIMEOUT - No response received at 2025-11-05T12:34:56.789Z
+Slack message updated with timeout notification
+```
+
+All messages include:
+- Username and User ID from Slack
+- ISO 8601 timestamp of the action
