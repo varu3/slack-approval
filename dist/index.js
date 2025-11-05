@@ -74,8 +74,9 @@ async function run() {
         const workflow = process.env.GITHUB_WORKFLOW || "";
         const runnerOS = process.env.RUNNER_OS || "";
         const actor = process.env.GITHUB_ACTOR || "";
-        // Store message timestamp for timeout handling
+        // Store message timestamp and blocks for timeout handling
         let messageTs = "";
+        let sentMessageBlocks = [];
         // Parse custom blocks
         let parsedCustomBlocks = [];
         try {
@@ -86,38 +87,29 @@ async function run() {
         }
         // Handle timeout (SIGTERM is sent by GitHub Actions before timeout kill)
         const handleTimeout = async () => {
-            if (messageTs) {
+            if (messageTs && sentMessageBlocks.length > 0) {
                 try {
                     console.log('Timeout detected, updating Slack message...');
-                    // Get current message blocks
-                    const response = await web.conversations.history({
+                    // Use stored blocks instead of fetching from API
+                    const updatedBlocks = [...sentMessageBlocks];
+                    // Remove the action buttons (last block)
+                    updatedBlocks.pop();
+                    // Add timeout message
+                    const timeoutBlock = {
+                        'type': 'section',
+                        'text': {
+                            'type': 'mrkdwn',
+                            'text': '⏱️ *Timeout:* The approval time has expired and the deployment was cancelled',
+                        },
+                    };
+                    updatedBlocks.push(timeoutBlock);
+                    await web.chat.update({
                         channel: channel_id,
-                        latest: messageTs,
-                        limit: 1,
-                        inclusive: true
+                        ts: messageTs,
+                        blocks: updatedBlocks,
+                        text: "GitHub Actions Approval request - Timeout"
                     });
-                    const message = response.messages?.[0];
-                    if (message?.blocks) {
-                        const updatedBlocks = message.blocks;
-                        // Remove the action buttons (last block)
-                        updatedBlocks.pop();
-                        // Add timeout message
-                        const timeoutBlock = {
-                            'type': 'section',
-                            'text': {
-                                'type': 'mrkdwn',
-                                'text': '⏱️ *Timeout:* The approval time has expired and the deployment was cancelled',
-                            },
-                        };
-                        updatedBlocks.push(timeoutBlock);
-                        await web.chat.update({
-                            channel: channel_id,
-                            ts: messageTs,
-                            blocks: updatedBlocks,
-                            text: "GitHub Actions Approval request - Timeout"
-                        });
-                        console.log('Slack message updated with timeout notification');
-                    }
+                    console.log('Slack message updated with timeout notification');
                 }
                 catch (error) {
                     console.error('Failed to update Slack message on timeout:', error);
@@ -204,8 +196,9 @@ async function run() {
                 text: "GitHub Actions Approval request",
                 blocks: messageBlocks
             });
-            // Store message timestamp for timeout handling
+            // Store message timestamp and blocks for timeout handling
             messageTs = result.ts || "";
+            sentMessageBlocks = messageBlocks;
         })();
         app.action('slack-approval-approve', async ({ ack, client, body, logger }) => {
             await ack();
