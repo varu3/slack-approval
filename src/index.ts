@@ -62,7 +62,8 @@ async function run(): Promise<void> {
     const handleTimeout = async () => {
       if (messageTs && sentMessageBlocks.length > 0) {
         try {
-          console.log('Timeout detected, updating Slack message...');
+          const timestamp = new Date().toISOString();
+          console.log(`⏱️ TIMEOUT - No response received at ${timestamp}`);
 
           // Use stored blocks instead of fetching from API
           const updatedBlocks = [...sentMessageBlocks];
@@ -185,13 +186,20 @@ async function run(): Promise<void> {
     app.action('slack-approval-approve', async ({ack, client, body, logger}) => {
       await ack();
       try {
+        const timestamp = new Date().toISOString();
+        const userId = body.user.id;
+        const user: any = body.user;
+        const userName = user.username || user.name || 'Unknown';
+
+        console.log(`✅ APPROVED by ${userName} (${userId}) at ${timestamp}`);
+
         const response_blocks = (<BlockAction>body).message?.blocks
         response_blocks.pop()
         response_blocks.push({
           'type': 'section',
           'text': {
             'type': 'mrkdwn',
-            'text': `Approved by <@${body.user.id}> `,
+            'text': `Approved by <@${userId}> `,
           },
         })
 
@@ -210,13 +218,20 @@ async function run(): Promise<void> {
     app.action('slack-approval-reject', async ({ack, client, body, logger}) => {
       await ack();
       try {
+        const timestamp = new Date().toISOString();
+        const userId = body.user.id;
+        const user: any = body.user;
+        const userName = user.username || user.name || 'Unknown';
+
+        console.log(`❌ REJECTED by ${userName} (${userId}) at ${timestamp}`);
+
         const response_blocks = (<BlockAction>body).message?.blocks
         response_blocks.pop()
         response_blocks.push({
           'type': 'section',
           'text': {
             'type': 'mrkdwn',
-            'text': `Rejected by <@${body.user.id}>`,
+            'text': `Rejected by <@${userId}>`,
           },
         })
 

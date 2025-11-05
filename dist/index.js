@@ -89,7 +89,8 @@ async function run() {
         const handleTimeout = async () => {
             if (messageTs && sentMessageBlocks.length > 0) {
                 try {
-                    console.log('Timeout detected, updating Slack message...');
+                    const timestamp = new Date().toISOString();
+                    console.log(`⏱️ TIMEOUT - No response received at ${timestamp}`);
                     // Use stored blocks instead of fetching from API
                     const updatedBlocks = [...sentMessageBlocks];
                     // Remove the action buttons (last block)
@@ -203,13 +204,18 @@ async function run() {
         app.action('slack-approval-approve', async ({ ack, client, body, logger }) => {
             await ack();
             try {
+                const timestamp = new Date().toISOString();
+                const userId = body.user.id;
+                const user = body.user;
+                const userName = user.username || user.name || 'Unknown';
+                console.log(`✅ APPROVED by ${userName} (${userId}) at ${timestamp}`);
                 const response_blocks = body.message?.blocks;
                 response_blocks.pop();
                 response_blocks.push({
                     'type': 'section',
                     'text': {
                         'type': 'mrkdwn',
-                        'text': `Approved by <@${body.user.id}> `,
+                        'text': `Approved by <@${userId}> `,
                     },
                 });
                 await client.chat.update({
@@ -226,13 +232,18 @@ async function run() {
         app.action('slack-approval-reject', async ({ ack, client, body, logger }) => {
             await ack();
             try {
+                const timestamp = new Date().toISOString();
+                const userId = body.user.id;
+                const user = body.user;
+                const userName = user.username || user.name || 'Unknown';
+                console.log(`❌ REJECTED by ${userName} (${userId}) at ${timestamp}`);
                 const response_blocks = body.message?.blocks;
                 response_blocks.pop();
                 response_blocks.push({
                     'type': 'section',
                     'text': {
                         'type': 'mrkdwn',
-                        'text': `Rejected by <@${body.user.id}>`,
+                        'text': `Rejected by <@${userId}>`,
                     },
                 });
                 await client.chat.update({
