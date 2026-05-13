@@ -34,6 +34,7 @@ var __importStar = (this && this.__importStar) || (function () {
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
 const core = __importStar(require("@actions/core"));
+const github = __importStar(require("@actions/github"));
 const bolt_1 = require("@slack/bolt");
 const web_api_1 = require("@slack/web-api");
 const token = process.env.SLACK_BOT_TOKEN || "";
@@ -41,6 +42,7 @@ const signingSecret = process.env.SLACK_SIGNING_SECRET || "";
 const slackAppToken = process.env.SLACK_APP_TOKEN || "";
 const channel_id = process.env.SLACK_CHANNEL_ID || "";
 const customBlocks = core.getInput('custom-blocks') || "[]";
+const githubToken = process.env.GITHUB_TOKEN || "";
 const app = new bolt_1.App({
     token: token,
     signingSecret: signingSecret,
@@ -59,6 +61,11 @@ async function run() {
         const workflow = process.env.GITHUB_WORKFLOW || "";
         const runnerOS = process.env.RUNNER_OS || "";
         const actor = process.env.GITHUB_ACTOR || "";
+        const repository = process.env.GITHUB_REPOSITORY || "";
+        const ref = process.env.GITHUB_REF || "";
+        const prMatch = ref.match(/^refs\/pull\/(\d+)\/(merge|head)$/);
+        const prNumber = prMatch ? Number(prMatch[1]) : undefined;
+        const [owner, repo] = repository.split("/");
         // Parse custom blocks
         let parsedCustomBlocks = [];
         try {
@@ -117,6 +124,16 @@ async function run() {
                         "text": {
                             "type": "plain_text",
                             "emoji": true,
+                            "text": "Comment"
+                        },
+                        "value": "comment",
+                        "action_id": "slack-approval-comment"
+                    },
+                    {
+                        "type": "button",
+                        "text": {
+                            "type": "plain_text",
+                            "emoji": true,
                             "text": "Approve"
                         },
                         "style": "primary",
@@ -133,6 +150,17 @@ async function run() {
                         "style": "danger",
                         "value": "reject",
                         "action_id": "slack-approval-reject"
+                    },
+                    {
+                        "type": "button",
+                        "text": {
+                            "type": "plain_text",
+                            "emoji": true,
+                            "text": "Close PR"
+                        },
+                        "style": "danger",
+                        "value": "close-pr",
+                        "action_id": "slack-approval-close-pr"
                     }
                 ]
             };
@@ -190,6 +218,131 @@ async function run() {
             }
             catch (error) {
                 logger.error(error);
+            }
+            process.exit(1);
+        });
+        app.action('slack-approval-comment', async ({ ack, body, client, logger }) => {
+            await ack();
+            try {
+                if (!owner || !repo || !prNumber) {
+                    throw new Error("This workflow is not running in pull_request context, cannot determine PR to comment on.");
+                }
+                const metadata = JSON.stringify({
+                    owner,
+                    repo,
+                    prNumber
+                });
+                await client.views.open({
+                    trigger_id: body.trigger_id,
+                    view: {
+                        type: "modal",
+                        callback_id: "slack-approval-comment-submit",
+                        private_metadata: metadata,
+                        title: {
+                            type: "plain_text",
+                            text: "Comment on PR"
+                        },
+                        submit: {
+                            type: "plain_text",
+                            text: "Post"
+                        },
+                        close: {
+                            type: "plain_text",
+                            text: "Cancel"
+                        },
+                        blocks: [
+                            {
+                                type: "input",
+                                block_id: "github-comment-block",
+                                label: {
+                                    type: "plain_text",
+                                    text: "Comment"
+                                },
+                                element: {
+                                    type: "plain_text_input",
+                                    action_id: "github-comment-input",
+                                    multiline: true
+                                }
+                            }
+                        ]
+                    }
+                });
+            }
+            catch (error) {
+                logger.error(error);
+            }
+        });
+        app.view('slack-approval-comment-submit', async ({ ack, body, view, client, logger }) => {
+            await ack();
+            try {
+                if (!githubToken) {
+                    throw new Error("GITHUB_TOKEN is required to create pull request comments from Slack.");
+                }
+                const metadata = JSON.parse(view.private_metadata || "{}");
+                const modalOwner = metadata.owner || owner;
+                const modalRepo = metadata.repo || repo;
+                const modalPrNumber = metadata.prNumber || prNumber;
+                if (!modalOwner || !modalRepo || !modalPrNumber) {
+                    throw new Error("Could not determine the target pull request for the comment.");
+                }
+                const commentText = view.state.values["github-comment-block"]["github-comment-input"].value?.trim();
+                if (!commentText) {
+                    throw new Error("Comment text is empty.");
+                }
+                const octokit = github.getOctokit(githubToken);
+                await octokit.rest.issues.createComment({
+                    owner: modalOwner,
+                    repo: modalRepo,
+                    issue_number: modalPrNumber,
+                    body: commentText
+                });
+                await client.chat.postEphemeral({
+                    channel: channel_id,
+                    user: body.user.id,
+                    text: `Posted your comment to PR #${modalPrNumber}.`
+                });
+            }
+            catch (error) {
+                logger.error(error);
+            }
+        });
+        app.action('slack-approval-close-pr', async ({ ack, client, body, logger }) => {
+            await ack();
+            try {
+                if (!githubToken) {
+                    throw new Error("GITHUB_TOKEN is required to close pull requests from Slack.");
+                }
+                if (!repository || !prNumber) {
+                    throw new Error("This workflow is not running in pull_request context, cannot determine PR to close.");
+                }
+                if (!owner || !repo) {
+                    throw new Error(`Invalid GITHUB_REPOSITORY value: ${repository}`);
+                }
+                const octokit = github.getOctokit(githubToken);
+                await octokit.rest.pulls.update({
+                    owner,
+                    repo,
+                    pull_number: prNumber,
+                    state: "closed"
+                });
+                const response_blocks = body.message?.blocks;
+                response_blocks.pop();
+                response_blocks.push({
+                    'type': 'section',
+                    'text': {
+                        'type': 'mrkdwn',
+                        'text': `Pull request #${prNumber} closed by <@${body.user.id}>`,
+                    },
+                });
+                await client.chat.update({
+                    channel: body.channel?.id || "",
+                    ts: body.message?.ts || "",
+                    blocks: response_blocks
+                });
+            }
+            catch (error) {
+                logger.error(error);
+                core.setFailed(error instanceof Error ? error.message : 'Failed to close pull request');
             }
             process.exit(1);
         });
