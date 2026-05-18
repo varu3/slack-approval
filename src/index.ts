@@ -18,10 +18,14 @@ const app = new App({
   logLevel: LogLevel.DEBUG,
 });
 
+function uniqueId(): string {
+  return `${Date.now().toString().slice(-5)}${Math.floor(Math.random() * 100000).toString().padStart(5, '0')}`
+}
+
 async function run(): Promise<void> {
   try {
     const web = new WebClient(token);
-
+    const id = uniqueId();
     const github_server_url = process.env.GITHUB_SERVER_URL || "";
     const github_repos = process.env.GITHUB_REPOSITORY || "";
     const run_id = process.env.GITHUB_RUN_ID || "";
@@ -93,7 +97,7 @@ async function run(): Promise<void> {
                   },
                   "style": "primary",
                   "value": "approve",
-                  "action_id": "slack-approval-approve"
+                  "action_id": `slack-approval-approve-${id}`
               },
               {
                   "type": "button",
@@ -104,7 +108,7 @@ async function run(): Promise<void> {
                   },
                   "style": "danger",
                   "value": "reject",
-                  "action_id": "slack-approval-reject"
+                  "action_id": `slack-approval-reject-${id}`
               }
           ]
       };
@@ -122,7 +126,7 @@ async function run(): Promise<void> {
       });
     })();
 
-    app.action('slack-approval-approve', async ({ack, client, body, logger}) => {
+    app.action(`slack-approval-approve-${id}`, async ({ack, client, body, logger}) => {
       await ack();
       try {
         const response_blocks = (<BlockAction>body).message?.blocks
@@ -147,7 +151,7 @@ async function run(): Promise<void> {
       process.exit(0)
     });
 
-    app.action('slack-approval-reject', async ({ack, client, body, logger}) => {
+    app.action(`slack-approval-reject-${id}`, async ({ack, client, body, logger}) => {
       await ack();
       try {
         const response_blocks = (<BlockAction>body).message?.blocks
