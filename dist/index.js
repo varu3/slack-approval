@@ -49,9 +49,13 @@ const app = new bolt_1.App({
     port: 3000,
     logLevel: bolt_1.LogLevel.DEBUG,
 });
+function uniqueId() {
+    return `${Date.now().toString().slice(-5)}${Math.floor(Math.random() * 100000).toString().padStart(5, '0')}`;
+}
 async function run() {
     try {
         const web = new web_api_1.WebClient(token);
+        const id = uniqueId();
         const github_server_url = process.env.GITHUB_SERVER_URL || "";
         const github_repos = process.env.GITHUB_REPOSITORY || "";
         const run_id = process.env.GITHUB_RUN_ID || "";
@@ -121,7 +125,7 @@ async function run() {
                         },
                         "style": "primary",
                         "value": "approve",
-                        "action_id": "slack-approval-approve"
+                        "action_id": `slack-approval-approve-${id}`
                     },
                     {
                         "type": "button",
@@ -132,7 +136,7 @@ async function run() {
                         },
                         "style": "danger",
                         "value": "reject",
-                        "action_id": "slack-approval-reject"
+                        "action_id": `slack-approval-reject-${id}`
                     }
                 ]
             };
@@ -147,7 +151,7 @@ async function run() {
                 blocks: messageBlocks
             });
         })();
-        app.action('slack-approval-approve', async ({ ack, client, body, logger }) => {
+        app.action(`slack-approval-approve-${id}`, async ({ ack, client, body, logger }) => {
             await ack();
             try {
                 const response_blocks = body.message?.blocks;
@@ -170,7 +174,7 @@ async function run() {
             }
             process.exit(0);
         });
-        app.action('slack-approval-reject', async ({ ack, client, body, logger }) => {
+        app.action(`slack-approval-reject-${id}`, async ({ ack, client, body, logger }) => {
             await ack();
             try {
                 const response_blocks = body.message?.blocks;
